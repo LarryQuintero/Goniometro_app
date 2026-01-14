@@ -85,8 +85,8 @@
     var sensorCharacteristicFound;
     var eje_Y_CharacteristicFound;
 
-    
-    console.log('Versión 4!');
+    var bleServiceFound2;
+    console.log('Versión 6!');
 
     // Connect Button (search for BLE Devices only if BLE is available)
     connectButton.addEventListener('click', (event) => {
@@ -152,6 +152,11 @@
             retrievedValue.innerHTML = decodedValue;
             // Obtener la característica del eje Y
             return bleServiceFound.getCharacteristic(eje_Y_Characteristic);
+        })
+        .then(service2 => {
+            bleServiceFound2 = service2;
+            //console.log("Eje Y Service discovered:", service2.uuid);
+            return service2.getCharacteristic(eje_Y_Characteristic);
         })
         .then(characteristic2 => {
             //console.log("Eje Y Characteristic discovered:", characteristic2.uuid);
