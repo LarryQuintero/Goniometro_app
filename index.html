@@ -83,11 +83,10 @@
     var bleServer;
     var bleServiceFound;
     var sensorCharacteristicFound;
-    var sensor_eje_Y_CharacteristicFound;
     var eje_Y_CharacteristicFound;
 
     
-
+    console.log('Versión 4!');
 
     // Connect Button (search for BLE Devices only if BLE is available)
     connectButton.addEventListener('click', (event) => {
@@ -151,19 +150,21 @@
             const decodedValue = new TextDecoder().decode(value);
             //console.log("Decoded value: ", decodedValue);
             retrievedValue.innerHTML = decodedValue;
-        })
-        .then(service => {
-            bleServiceFound = service;
-            return service.getCharacteristic(eje_Y_Characteristic);
+            // Obtener la característica del eje Y
+            return bleServiceFound.getCharacteristic(eje_Y_Characteristic);
         })
         .then(characteristic => {
+            //console.log("Eje Y Characteristic discovered:", characteristic.uuid);
             eje_Y_CharacteristicFound = characteristic;
             characteristic.addEventListener('characteristicvaluechanged', handleCharacteristicChangeY);
             characteristic.startNotifications();
+            //console.log("Eje Y Notifications Started.");
             return characteristic.readValue();
         })
         .then(value => {
+            //console.log("Eje Y Read value: ", value);
             const decodedValueY = new TextDecoder().decode(value);
+            //console.log("Eje Y Decoded value: ", decodedValueY);
             retrievedValueY.innerHTML = decodedValueY;
         })
         .catch(error => {
@@ -220,23 +221,12 @@
             if (sensorCharacteristicFound) {
                 sensorCharacteristicFound.stopNotifications()
                     .then(() => {
-                        console.log("Notifications Stopped");
-                        return bleServer.disconnect();
+                        console.log("Elevation Notifications Stopped");
+                        // Detener notificaciones del eje Y si existe
+                        if (eje_Y_CharacteristicFound) {
+                            return eje_Y_CharacteristicFound.stopNotifications();
+                        }
                     })
-                    .then(() => {
-                        console.log("Device Disconnected");
-                        bleStateContainer.innerHTML = "Device Disconnected";
-                        bleStateContainer.style.color = "#d13a30";
-
-                    })
-                    .catch(error => {
-                        console.log("An error occurred:", error);
-                    });
-            } else {
-                console.log("No characteristic found to disconnect.");
-            }
-            if (eje_Y_CharacteristicFound) {
-                eje_Y_CharacteristicFound.stopNotifications()
                     .then(() => {
                         console.log("Y Axis Notifications Stopped");
                         return bleServer.disconnect();
@@ -245,13 +235,12 @@
                         console.log("Device Disconnected");
                         bleStateContainer.innerHTML = "Device Disconnected";
                         bleStateContainer.style.color = "#d13a30";
-
                     })
                     .catch(error => {
                         console.log("An error occurred:", error);
                     });
             } else {
-                console.log("No Y Axis characteristic found to disconnect.");
+                console.log("No characteristic found to disconnect.");
             }
         } else {
             // Throw an error if Bluetooth is not connected
