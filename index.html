@@ -57,217 +57,210 @@
     </div> -->
 </body>
 <script>
-    if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./service-worker.js");
+  // PWA: registrar Service Worker (si existe el archivo)
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./service-worker.js");
+  }
+
+  // DOM Elements
+  const connectButton = document.getElementById("connectBleButton");
+  const disconnectButton = document.getElementById("disconnectBleButton");
+
+  // Estos elementos existen en tu HTML
+  const retrievedValue = document.getElementById("valueContainer");
+  const retrievedValueY = document.getElementById("valueContainerY");
+  const bleStateContainer = document.getElementById("bleState");
+  const timestampContainer = document.getElementById("timestamp");
+  const timestampContainerY = document.getElementById("timestampY");
+
+  // Estos NO existen ahora mismo (están comentados en el HTML), así que los dejamos opcionales
+  const onButton = document.getElementById("onButton");
+  const offButton = document.getElementById("offButton");
+  const latestValueSent = document.getElementById("valueSent");
+
+  // Define BLE Device Specs
+  const deviceName = "ESP32";
+
+  // Servicio principal (el tuyo)
+  const bleService = "19b10000-e8f2-537e-4f6c-d104768a1214";
+
+  // Characteristics
+  const ledCharacteristic = "19b10002-e8f2-537e-4f6c-d104768a1214";     // opcional
+  const sensorCharacteristic = "19b10001-e8f2-537e-4f6c-d104768a1214";  // Elevation
+  const eje_Y_Characteristic = "96165373-4590-46ce-86a8-a5d3fd07eeb9";  // Y Axis
+
+  // Global BLE variables
+  let bleDevice = null;
+  let bleServer = null;
+  let bleServiceFound = null;
+
+  let sensorCharacteristicFound = null;
+  let eje_Y_CharacteristicFound = null;
+
+  console.log("Versión (script completo) OK");
+
+  // Eventos
+  connectButton.addEventListener("click", () => {
+    if (isWebBluetoothEnabled()) {
+      connectToDevice();
     }
-    // DOM Elements
-    const connectButton = document.getElementById('connectBleButton');
-    const disconnectButton = document.getElementById('disconnectBleButton');
-    const onButton = document.getElementById('onButton');
-    const offButton = document.getElementById('offButton');
-    const retrievedValue = document.getElementById('valueContainer');
-    const retrievedValueY = document.getElementById('valueContainerY');
-    const latestValueSent = document.getElementById('valueSent');
-    const bleStateContainer = document.getElementById('bleState');
-    const timestampContainer = document.getElementById('timestamp');
-    const timestampContainerY = document.getElementById('timestampY');
+  });
 
-    //Define BLE Device Specs
-    var deviceName ='ESP32';
-    var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
-    var ledCharacteristic = '19b10002-e8f2-537e-4f6c-d104768a1214';
-    var sensorCharacteristic= '19b10001-e8f2-537e-4f6c-d104768a1214';
-    var eje_Y_Characteristic = "96165373-4590-46ce-86a8-a5d3fd07eeb9";
+  disconnectButton.addEventListener("click", disconnectDevice);
 
-    //Global Variables to Handle Bluetooth
-    var bleServer;
-    var bleServiceFound;
-    var sensorCharacteristicFound;
-    var eje_Y_CharacteristicFound;
+  // Botones opcionales (si existen en el HTML)
+  if (onButton) onButton.addEventListener("click", () => writeOnCharacteristic(1));
+  if (offButton) offButton.addEventListener("click", () => writeOnCharacteristic(0));
 
-    var bleServiceFound2;
-    console.log('Versión 6!');
-
-    // Connect Button (search for BLE Devices only if BLE is available)
-    connectButton.addEventListener('click', (event) => {
-        if (isWebBluetoothEnabled()){
-            connectToDevice();
-        }
-    });
-
-    // Disconnect Button
-    disconnectButton.addEventListener('click', disconnectDevice);
-
-    // Write to the ESP32 LED Characteristic
-    onButton.addEventListener('click', () => writeOnCharacteristic(1));
-    offButton.addEventListener('click', () => writeOnCharacteristic(0));
-
-    // Check if BLE is available in your Browser
-    function isWebBluetoothEnabled() {
-        if (!navigator.bluetooth) {
-            console.log('Web Bluetooth API is not available in this browser!');
-            bleStateContainer.innerHTML = "Web Bluetooth API is not available in this browser/device!";
-            return false
-        }
-        console.log('Web Bluetooth API supported in this browser.');
-        return true
+  function isWebBluetoothEnabled() {
+    if (!navigator.bluetooth) {
+      console.log("Web Bluetooth API is not available in this browser!");
+      bleStateContainer.innerHTML = "Web Bluetooth API is not available in this browser/device!";
+      return false;
     }
+    console.log("Web Bluetooth API supported in this browser.");
+    return true;
+  }
 
-    // Connect to BLE Device and Enable Notifications
-    function connectToDevice(){
-        console.log('Initializing Bluetooth...');
-        navigator.bluetooth.requestDevice({
-            filters: [{name: deviceName}],
-            optionalServices: [bleService]
-        })
-        .then(device => {
-            console.log('Device Selected:', device.name);
-            bleStateContainer.innerHTML = 'Connected to device ' + device.name;
-            bleStateContainer.style.color = "#24af37";
-            device.addEventListener('gattservicedisconnected', onDisconnected);
-            return device.gatt.connect();
-        })
-        .then(gattServer =>{
-            bleServer = gattServer;
-            console.log("Connected to GATT Server");
-            return bleServer.getPrimaryService(bleService);
-        })
-        .then(service => {
-            bleServiceFound = service;
-            //console.log("Service discovered:", service.uuid);
-            return service.getCharacteristic(sensorCharacteristic);
-        })
-        .then(characteristic => {
-            //console.log("Characteristic discovered:", characteristic.uuid);
-            sensorCharacteristicFound = characteristic;
-            characteristic.addEventListener('characteristicvaluechanged', handleCharacteristicChange);
-            characteristic.startNotifications();
-            //console.log("Notifications Started.");
-            return characteristic.readValue();
-        })
-        .then(value => {
-            //console.log("Read value: ", value);
-            const decodedValue = new TextDecoder().decode(value);
-            //console.log("Decoded value: ", decodedValue);
-            retrievedValue.innerHTML = decodedValue;
-            // Obtener la característica del eje Y
-            return bleServiceFound.getCharacteristic(eje_Y_Characteristic);
-        })
-        .then(service2 => {
-            bleServiceFound2 = service2;
-            //console.log("Eje Y Service discovered:", service2.uuid);
-            return service2.getCharacteristic(eje_Y_Characteristic);
-        })
-        .then(characteristic2 => {
-            //console.log("Eje Y Characteristic discovered:", characteristic2.uuid);
-            eje_Y_CharacteristicFound = characteristic2;
-            characteristic2.addEventListener('characteristicvaluechanged', handleCharacteristicChangeY);
-            characteristic2.startNotifications();
-            //console.log("Eje Y Notifications Started.");
-            return characteristic2.readValue();
-        })
-        .then(value2 => {
-            //console.log("Eje Y Read value: ", value2);
-            const decodedValueY = new TextDecoder().decode(value2);
-            //console.log("Eje Y Decoded value: ", decodedValueY);
-            retrievedValueY.innerHTML = decodedValueY;
-        })
-        .catch(error => {
-            console.log('Error: ', error);
-        })
+  async function connectToDevice() {
+    try {
+      console.log("Initializing Bluetooth...");
+
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [{ name: deviceName }],
+        optionalServices: [bleService]
+      });
+
+      console.log("Device Selected:", bleDevice.name);
+
+      bleStateContainer.innerHTML = "Connected to device " + bleDevice.name;
+      bleStateContainer.style.color = "#24af37";
+
+      bleDevice.addEventListener("gattservicedisconnected", onDisconnected);
+
+      bleServer = await bleDevice.gatt.connect();
+      console.log("Connected to GATT Server");
+
+      bleServiceFound = await bleServer.getPrimaryService(bleService);
+      console.log("Service discovered:", bleServiceFound.uuid);
+
+      // 1) Elevation characteristic: notificaciones + lectura inicial
+      sensorCharacteristicFound = await bleServiceFound.getCharacteristic(sensorCharacteristic);
+      console.log("Elevation characteristic:", sensorCharacteristicFound.uuid);
+
+      sensorCharacteristicFound.addEventListener("characteristicvaluechanged", handleCharacteristicChange);
+      await sensorCharacteristicFound.startNotifications();
+      console.log("Elevation notifications started.");
+
+      const value = await sensorCharacteristicFound.readValue();
+      retrievedValue.innerHTML = new TextDecoder().decode(value);
+
+      // 2) Y Axis characteristic: notificaciones + lectura inicial
+      eje_Y_CharacteristicFound = await bleServiceFound.getCharacteristic(eje_Y_Characteristic);
+      console.log("Y Axis characteristic:", eje_Y_CharacteristicFound.uuid);
+
+      eje_Y_CharacteristicFound.addEventListener("characteristicvaluechanged", handleCharacteristicChangeY);
+      await eje_Y_CharacteristicFound.startNotifications();
+      console.log("Y Axis notifications started.");
+
+      const valueY = await eje_Y_CharacteristicFound.readValue();
+      retrievedValueY.innerHTML = new TextDecoder().decode(valueY);
+
+    } catch (error) {
+      console.log("Error:", error);
+      bleStateContainer.innerHTML = "Error connecting";
+      bleStateContainer.style.color = "#d13a30";
     }
+  }
 
-    function onDisconnected(event){
-        console.log('Device Disconnected:', event.target.device.name);
-        bleStateContainer.innerHTML = "Device disconnected";
-        bleStateContainer.style.color = "#d13a30";
+  function onDisconnected(event) {
+    console.log("Device Disconnected:", event.target?.device?.name);
+    bleStateContainer.innerHTML = "Device disconnected";
+    bleStateContainer.style.color = "#d13a30";
 
-        connectToDevice();
+    // Si quieres autoreconectar, descomenta:
+    // connectToDevice();
+  }
+
+  function handleCharacteristicChange(event) {
+    const newValueReceived = new TextDecoder().decode(event.target.value);
+    console.log("Elevation changed:", newValueReceived);
+    retrievedValue.innerHTML = newValueReceived;
+    timestampContainer.innerHTML = getDateTime();
+  }
+
+  function handleCharacteristicChangeY(event) {
+    const newValueReceived = new TextDecoder().decode(event.target.value);
+    console.log("Y Axis changed:", newValueReceived);
+    retrievedValueY.innerHTML = newValueReceived;
+    timestampContainerY.innerHTML = getDateTime();
+  }
+
+  async function writeOnCharacteristic(value) {
+    try {
+      if (!bleServer || !bleServer.connected || !bleServiceFound) {
+        console.error("Bluetooth is not connected. Cannot write to characteristic.");
+        window.alert("Bluetooth is not connected. Cannot write to characteristic.\nConnect to BLE first!");
+        return;
+      }
+
+      const characteristic = await bleServiceFound.getCharacteristic(ledCharacteristic);
+      console.log("Found LED characteristic:", characteristic.uuid);
+
+      const data = new Uint8Array([value]);
+      await characteristic.writeValue(data);
+
+      if (latestValueSent) latestValueSent.innerHTML = value;
+      console.log("Value written:", value);
+
+    } catch (error) {
+      console.error("Error writing to LED characteristic:", error);
     }
+  }
 
-    function handleCharacteristicChange(event){
-        const newValueReceived = new TextDecoder().decode(event.target.value);
-        console.log("Characteristic value changed: ", newValueReceived);
-        retrievedValue.innerHTML = newValueReceived;
-        timestampContainer.innerHTML = getDateTime();
+  async function disconnectDevice() {
+    console.log("Disconnect Device.");
+
+    try {
+      if (!bleServer || !bleServer.connected) {
+        console.error("Bluetooth is not connected.");
+        window.alert("Bluetooth is not connected.");
+        return;
+      }
+
+      // Parar notificaciones (si existen)
+      if (sensorCharacteristicFound) {
+        await sensorCharacteristicFound.stopNotifications();
+        console.log("Elevation notifications stopped");
+      }
+
+      if (eje_Y_CharacteristicFound) {
+        await eje_Y_CharacteristicFound.stopNotifications();
+        console.log("Y Axis notifications stopped");
+      }
+
+      bleServer.disconnect();
+      console.log("Device Disconnected");
+
+      bleStateContainer.innerHTML = "Device Disconnected";
+      bleStateContainer.style.color = "#d13a30";
+
+    } catch (error) {
+      console.log("An error occurred:", error);
     }
+  }
 
-    function handleCharacteristicChangeY(event){
-        const newValueReceived = new TextDecoder().decode(event.target.value);
-        console.log("Eje Y value changed: ", newValueReceived);
-        retrievedValueY.innerHTML = newValueReceived;
-        timestampContainerY.innerHTML = getDateTime();
-    }
-
-    function writeOnCharacteristic(value){
-        if (bleServer && bleServer.connected) {
-            bleServiceFound.getCharacteristic(ledCharacteristic)
-            .then(characteristic => {
-                console.log("Found the LED characteristic: ", characteristic.uuid);
-                const data = new Uint8Array([value]);
-                return characteristic.writeValue(data);
-            })
-            .then(() => {
-                latestValueSent.innerHTML = value;
-                console.log("Value written to LEDcharacteristic:", value);
-            })
-            .catch(error => {
-                console.error("Error writing to the LED characteristic: ", error);
-            });
-        } else {
-            console.error ("Bluetooth is not connected. Cannot write to characteristic.")
-            window.alert("Bluetooth is not connected. Cannot write to characteristic. \n Connect to BLE first!")
-        }
-    }
-
-    function disconnectDevice() {
-        console.log("Disconnect Device.");
-        if (bleServer && bleServer.connected) {
-            if (sensorCharacteristicFound) {
-                sensorCharacteristicFound.stopNotifications()
-                    .then(() => {
-                        console.log("Elevation Notifications Stopped");
-                        // Detener notificaciones del eje Y si existe
-                        if (eje_Y_CharacteristicFound) {
-                            return eje_Y_CharacteristicFound.stopNotifications();
-                        }
-                    })
-                    .then(() => {
-                        console.log("Y Axis Notifications Stopped");
-                        return bleServer.disconnect();
-                    })
-                    .then(() => {
-                        console.log("Device Disconnected");
-                        bleStateContainer.innerHTML = "Device Disconnected";
-                        bleStateContainer.style.color = "#d13a30";
-                    })
-                    .catch(error => {
-                        console.log("An error occurred:", error);
-                    });
-            } else {
-                console.log("No characteristic found to disconnect.");
-            }
-        } else {
-            // Throw an error if Bluetooth is not connected
-            console.error("Bluetooth is not connected.");
-            window.alert("Bluetooth is not connected.")
-        }
-    }
-
-    function getDateTime() {
-        var currentdate = new Date();
-        var day = ("00" + currentdate.getDate()).slice(-2); // Convert day to string and slice
-        var month = ("00" + (currentdate.getMonth() + 1)).slice(-2);
-        var year = currentdate.getFullYear();
-        var hours = ("00" + currentdate.getHours()).slice(-2);
-        var minutes = ("00" + currentdate.getMinutes()).slice(-2);
-        var seconds = ("00" + currentdate.getSeconds()).slice(-2);
-
-        var datetime = day + "/" + month + "/" + year + " at " + hours + ":" + minutes + ":" + seconds;
-        return datetime;
-    }
-
-
+  function getDateTime() {
+    const currentdate = new Date();
+    const day = ("00" + currentdate.getDate()).slice(-2);
+    const month = ("00" + (currentdate.getMonth() + 1)).slice(-2);
+    const year = currentdate.getFullYear();
+    const hours = ("00" + currentdate.getHours()).slice(-2);
+    const minutes = ("00" + currentdate.getMinutes()).slice(-2);
+    const seconds = ("00" + currentdate.getSeconds()).slice(-2);
+    return `${day}/${month}/${year} at ${hours}:${minutes}:${seconds}`;
+  }
 </script>
+
 
 </html>
