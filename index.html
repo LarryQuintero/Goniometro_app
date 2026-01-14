@@ -153,17 +153,17 @@
             // Obtener la característica del eje Y
             return bleServiceFound.getCharacteristic(eje_Y_Characteristic);
         })
-        .then(characteristic => {
-            //console.log("Eje Y Characteristic discovered:", characteristic.uuid);
-            eje_Y_CharacteristicFound = characteristic;
-            characteristic.addEventListener('characteristicvaluechanged', handleCharacteristicChangeY);
-            characteristic.startNotifications();
+        .then(characteristic2 => {
+            //console.log("Eje Y Characteristic discovered:", characteristic2.uuid);
+            eje_Y_CharacteristicFound = characteristic2;
+            characteristic2.addEventListener('characteristicvaluechanged', handleCharacteristicChangeY);
+            characteristic2.startNotifications();
             //console.log("Eje Y Notifications Started.");
-            return characteristic.readValue();
+            return characteristic2.readValue();
         })
-        .then(value => {
-            //console.log("Eje Y Read value: ", value);
-            const decodedValueY = new TextDecoder().decode(value);
+        .then(value2 => {
+            //console.log("Eje Y Read value: ", value2);
+            const decodedValueY = new TextDecoder().decode(value2);
             //console.log("Eje Y Decoded value: ", decodedValueY);
             retrievedValueY.innerHTML = decodedValueY;
         })
