@@ -158,6 +158,7 @@
       // 2) Y Axis characteristic: notificaciones + lectura inicial
       eje_Y_CharacteristicFound = await bleServiceFound.getCharacteristic(eje_Y_Characteristic);
       console.log("Y Axis characteristic:", eje_Y_CharacteristicFound.uuid);
+      //console.log("Y Axis properties:", eje_Y_CharacteristicFound.properties);
 
       eje_Y_CharacteristicFound.addEventListener("characteristicvaluechanged", handleCharacteristicChangeY);
       await eje_Y_CharacteristicFound.startNotifications();
@@ -184,14 +185,14 @@
 
   function handleCharacteristicChange(event) {
     const newValueReceived = new TextDecoder().decode(event.target.value);
-    console.log("Elevation changed:", newValueReceived);
+    //console.log("Elevation changed:", newValueReceived);
     retrievedValue.innerHTML = newValueReceived;
     timestampContainer.innerHTML = getDateTime();
   }
 
   function handleCharacteristicChangeY(event) {
     const newValueReceived = new TextDecoder().decode(event.target.value);
-    console.log("Y Axis changed:", newValueReceived);
+    //console.log("Y Axis changed:", newValueReceived);
     retrievedValueY.innerHTML = newValueReceived;
     timestampContainerY.innerHTML = getDateTime();
   }
