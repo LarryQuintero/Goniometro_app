@@ -5,7 +5,7 @@ html {
 }
 h1 {
     font-size: 1.8rem;
-    color: white;
+    color: #f5f5dc;
 }
 .topnav {
     overflow: hidden;
@@ -13,6 +13,8 @@ h1 {
 }
 body {
     margin: 0;
+    background-color: #000000;
+    color: #f5f5dc;
 }
 .content {
     padding: 50px;
@@ -26,8 +28,9 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 .card {
-    background-color: white;
+    background-color: #1a1a1a;
     box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+    color: #f5f5dc;
 }
 button {
     color: white;
@@ -55,10 +58,11 @@ button {
 }
 
 .gray-label {
-    color: #bebebe;
+    color: #a9a9a9;
     font-size: 1rem;
 }
 
 .reading {
     font-size: 3.5rem;
+    color: #f5f5dc;
 }
